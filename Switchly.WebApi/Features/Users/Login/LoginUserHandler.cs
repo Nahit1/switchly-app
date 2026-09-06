@@ -1,5 +1,6 @@
 using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Switchly.WebApi.Auth;
 using Switchly.WebApi.Context;
@@ -37,11 +38,20 @@ public class LoginUserHandler(SwitchlyDbContext context, IJwtTokenGenerator jwtT
     {
         var user = await context
             .Users
-            .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Email == request.Email, cancellationToken);
         
-        if (user is null || user.PasswordHash != HashPasswordService.Hash(request.Password))
+        if (user is null)
             return Response<UserLoginDto>.Fail("Email ya da şifre hatalı.");
+
+        var verificationResult = HashPasswordService.Verify(user, request.Password);
+        if (verificationResult == PasswordVerificationResult.Failed)
+            return Response<UserLoginDto>.Fail("Email ya da şifre hatalı.");
+
+        if (verificationResult == PasswordVerificationResult.SuccessRehashNeeded)
+        {
+            user.PasswordHash = HashPasswordService.Hash(user, request.Password);
+            await context.SaveChangesAsync(cancellationToken);
+        }
 
         var organizations = await context.OrganizationMembers
             .Where(x => x.UserId == user.Id)

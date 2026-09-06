@@ -41,9 +41,10 @@ public class RegisterUserHandler(SwitchlyDbContext context)
         var newUser = new User
         {
             Email = request.Email,
-            PasswordHash = HashPasswordService.Hash(request.Password),
             CreatedAt = DateTime.UtcNow,
         };
+
+        newUser.PasswordHash = HashPasswordService.Hash(newUser, request.Password);
         
         await context.Users.AddAsync(newUser);
         await context.SaveChangesAsync(cancellationToken);
