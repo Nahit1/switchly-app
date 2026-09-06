@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Switchly.WebApi.Auth;
 using Switchly.WebApi.Context;
 using Switchly.WebApi.Models.Common;
 
@@ -19,11 +20,21 @@ public sealed record GetProjectsByOrganizationDto
     public DateTimeOffset CreatedAt { get; set; }
 }
 
-public class GetProjectsByOrganizationHandler(SwitchlyDbContext db)
+public class GetProjectsByOrganizationHandler(SwitchlyDbContext db, IUserContext userContext)
     :IRequestHandler<GetOrganizationListQuery, Response<List<GetProjectsByOrganizationDto>>>
 {
     public async Task<Response<List<GetProjectsByOrganizationDto>>> Handle(GetOrganizationListQuery request, CancellationToken cancellationToken)
     {
+        var isMember = await db.OrganizationMembers
+            .AsNoTracking()
+            .AnyAsync(member =>
+                member.OrganizationId == request.OrganizationId &&
+                member.UserId == userContext.UserId,
+                cancellationToken);
+
+        if (!isMember)
+            return Response<List<GetProjectsByOrganizationDto>>.Fail("Bu organization için yetkin yok.");
+
         var projects = await db.FlagsProjects
             .Where(x=>x.OrganizationId == request.OrganizationId && !x.IsArchived)
             .Include(x=>x.Organization)

@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Switchly.WebApi.Features.Flags.CreateFlag;
 
-public class CreateFlagEndpoint:CarterModule
+public class CreateFlagEndpoint : ICarterModule
 {
     public sealed class Request
     {
@@ -15,7 +15,7 @@ public class CreateFlagEndpoint:CarterModule
         public string Description { get; set; }
     }
     
-    public override void AddRoutes(IEndpointRouteBuilder app)
+    public void AddRoutes(IEndpointRouteBuilder app)
     {
         app.MapPost("/api/flag/create", async ([FromBody] Request r, IMediator mediator) =>
             {

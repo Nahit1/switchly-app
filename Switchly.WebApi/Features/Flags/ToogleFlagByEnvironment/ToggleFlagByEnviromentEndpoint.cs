@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Switchly.WebApi.Features.Flags.ToogleFlagByEnvironment;
 
-public class ToggleFlagByEnviromentEndpoint:CarterModule
+public class ToggleFlagByEnviromentEndpoint : ICarterModule
 {
     public sealed record ToggleFlagEnvironmentBody(
         Guid OrganizationId,
@@ -12,11 +12,11 @@ public class ToggleFlagByEnviromentEndpoint:CarterModule
         bool IsEnabled
     );
     
-    public override void AddRoutes(IEndpointRouteBuilder app)
+    public void AddRoutes(IEndpointRouteBuilder app)
     {
-        app.MapPut("/api/flags/{flagId:guid}/environments/{envId:guid}/toggle",
+        app.MapPut("/api/flags/{flagId:guid}/environments/{featureFlagEnvironmentId:guid}/toggle",
                 async (Guid flagId,
-                    Guid envId,
+                    Guid featureFlagEnvironmentId,
                     [FromBody] ToggleFlagEnvironmentBody body,
                     IMediator mediator,
                     CancellationToken ct) =>
@@ -25,7 +25,7 @@ public class ToggleFlagByEnviromentEndpoint:CarterModule
                         body.OrganizationId,
                         body.ProjectId,
                         flagId,
-                        envId,
+                        featureFlagEnvironmentId,
                         body.IsEnabled
                     );
 

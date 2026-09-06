@@ -22,30 +22,26 @@ public class CreateProjectHandler(SwitchlyDbContext context, IUserContext userCo
 {
     public async Task<Response<CreateProjectDto>> Handle(CreateProjectRequest request, CancellationToken cancellationToken)
     {
-        var userId = userContext.UserId;
-        
-        var user = await context.Users
-            .Include(user => user.OrganizationMembers)
+        var hasPermission = await context.OrganizationMembers
             .AsNoTracking()
-            .FirstOrDefaultAsync(x=>x.Id == userId, cancellationToken);
-        
+            .AnyAsync(member =>
+                member.OrganizationId == request.OrganizationId &&
+                member.UserId == userContext.UserId &&
+                (member.Role == OrganizationRole.Admin || member.Role == OrganizationRole.Owner),
+                cancellationToken);
+
+        if (!hasPermission)
+            return Response<CreateProjectDto>.Fail("Bu organization için proje oluşturma yetkin yok.");
+
         var existsProjectName = await context.FlagsProjects
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Name == request.name, cancellationToken: cancellationToken);
-        
-        if (existsProjectName is not null)
-        {
-            return Response<CreateProjectDto>.Fail("Project name already exists");
-        }
-        if (user is null)
-        {
-            return Response<CreateProjectDto>.Fail("User does not exist");
-        }
+            .AnyAsync(project =>
+                project.OrganizationId == request.OrganizationId &&
+                project.Name == request.name,
+                cancellationToken);
 
-        if (user.OrganizationMembers.Any(x => x.Role != OrganizationRole.Admin && x.Role != OrganizationRole.Owner))
-        {
-            return Response<CreateProjectDto>.Fail("User has no permission to create a project");
-        }
+        if (existsProjectName)
+            return Response<CreateProjectDto>.Fail("Bu organization içinde aynı isimde bir proje zaten var.");
         
         var now = DateTime.UtcNow;
         var project = new FlagsProject

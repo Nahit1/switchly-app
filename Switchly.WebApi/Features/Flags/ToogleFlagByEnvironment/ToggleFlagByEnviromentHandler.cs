@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Switchly.WebApi.Auth;
 using Switchly.WebApi.Context;
 using Switchly.WebApi.Models.Common;
+using Switchly.WebApi.Models.Enums;
 
 namespace Switchly.WebApi.Features.Flags.ToogleFlagByEnvironment;
 
@@ -10,32 +11,34 @@ public sealed record ToggleFlagEnvironmentCommand(
     Guid OrganizationId,
     Guid ProjectId,
     Guid FeatureFlagId,
-    Guid ProjectEnvironmentId,
+    Guid FeatureFlagEnvironmentId,
     bool IsEnabled
 ) : IRequest<Response<bool>>;
 
 public class ToggleFlagByEnviromentHandler(
     SwitchlyDbContext context,
-    IUserContext userContext // senin CurrentUser abstraction'ın
+    IUserContext userContext
 ) : IRequestHandler<ToggleFlagEnvironmentCommand, Response<bool>>
 {
     public async Task<Response<bool>> Handle(ToggleFlagEnvironmentCommand request, CancellationToken cancellationToken)
     {
-        var isMember = await context.OrganizationMembers
+        var hasPermission = await context.OrganizationMembers
             .AsNoTracking()
             .AnyAsync(m =>
                 m.OrganizationId == request.OrganizationId &&
-                m.UserId == userContext.UserId, cancellationToken);
+                m.UserId == userContext.UserId &&
+                (m.Role == OrganizationRole.Admin || m.Role == OrganizationRole.Owner), cancellationToken);
 
-        if (!isMember)
-            return Response<bool>.Fail("Bu organization için yetkin yok.");
+        if (!hasPermission)
+            return Response<bool>.Fail("Bu organization için flag değiştirme yetkin yok.");
         
         var valid = await context.FeatureFlagEnvironments
             .AsNoTracking()
             .AnyAsync(x =>
                     x.FeatureFlagId == request.FeatureFlagId &&
-                    x.Id == request.ProjectEnvironmentId &&
-                    x.ProjectEnvironment.ProjectId== request.ProjectId,
+                    x.Id == request.FeatureFlagEnvironmentId &&
+                    x.FeatureFlag.ProjectId == request.ProjectId &&
+                    x.FeatureFlag.FlagsProject.OrganizationId == request.OrganizationId,
                 cancellationToken);
 
         if (!valid)
@@ -44,7 +47,7 @@ public class ToggleFlagByEnviromentHandler(
         var entity = await context.FeatureFlagEnvironments
             .FirstOrDefaultAsync(x =>
                 x.FeatureFlagId == request.FeatureFlagId &&
-                x.Id == request.ProjectEnvironmentId, cancellationToken);
+                x.Id == request.FeatureFlagEnvironmentId, cancellationToken);
 
         if (entity is null)
             return Response<bool>.Fail("FeatureFlagEnvironment kaydı bulunamadı.");

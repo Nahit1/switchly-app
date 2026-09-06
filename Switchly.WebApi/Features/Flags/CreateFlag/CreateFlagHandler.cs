@@ -30,10 +30,11 @@ public class CreateFlagHandler(SwitchlyDbContext context, IUserContext userConte
         var isMember = await context.OrganizationMembers
             .AnyAsync(m =>
                 m.OrganizationId == request.OrganizationId &&
-                m.UserId == userContext.UserId, cancellationToken);
+                m.UserId == userContext.UserId &&
+                (m.Role == OrganizationRole.Admin || m.Role == OrganizationRole.Owner), cancellationToken);
 
         if (!isMember)
-            throw new UnauthorizedAccessException("Bu organization için yetkin yok.");
+            return Response<CreateFlagDto>.Fail("Bu organization için flag oluşturma yetkin yok.");
         
         var project = await context.FlagsProjects
             .FirstOrDefaultAsync(p =>

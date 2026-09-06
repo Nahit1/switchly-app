@@ -44,11 +44,21 @@ public class GetByProjectHandler(SwitchlyDbContext context, IUserContext userCon
                 m.UserId == userContext.UserId, cancellationToken);
         
         if (!isMember)
-            throw new UnauthorizedAccessException("Bu organization için yetkin yok.");
+            return Response<List<GetFlagByProjectDto>>.Fail("Bu organization için yetkin yok.");
+
+        var projectExists = await context.FlagsProjects
+            .AsNoTracking()
+            .AnyAsync(project =>
+                project.Id == request.projectId &&
+                project.OrganizationId == request.organizationId,
+                cancellationToken);
+
+        if (!projectExists)
+            return Response<List<GetFlagByProjectDto>>.Fail("Project bu organization'a ait değil.");
         
         var flagList = await context.FeatureFlags
             .AsNoTracking()
-            .Where(f => f.ProjectId == request.projectId)
+            .Where(f => f.ProjectId == request.projectId && !f.IsArchived)
             .OrderBy(f => f.Key)
             .Select(f => new GetFlagByProjectDto
             {
