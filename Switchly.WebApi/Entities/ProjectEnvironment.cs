@@ -8,6 +8,8 @@ public class ProjectEnvironment
 
     public string Name { get; set; } = default!; // Development, Staging, Production
     public string Key { get; set; } = default!;  // dev, stg, prod
+    public bool IsDefault { get; set; }
+    public int SortOrder { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     
     public ICollection<FeatureFlagEnvironment> FeatureFlagEnvironments { get; set; } = new List<FeatureFlagEnvironment>();
