@@ -57,6 +57,12 @@ builder.Services.AddRateLimiter(opts =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<SwitchlyDbContext>();
+    await db.Database.MigrateAsync();
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -70,5 +76,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapCarter();
+app.MapHealthChecks("/health");
 
 app.Run();
