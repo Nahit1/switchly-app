@@ -3,4 +3,5 @@
     ports: !override
       - "127.0.0.1:${API_PORT}:8080"
   postgres_switchly_db:
-    ports: !reset []
+    ports: !override
+      - "127.0.0.1:${POSTGRES_HOST_PORT}:5432"
