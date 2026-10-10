@@ -41,7 +41,8 @@ public sealed class GetSdkFlagsHandler(SwitchlyDbContext db)
                 fe.ProjectEnvironmentId == environmentId &&
                 !fe.FeatureFlag.IsArchived)
             .OrderBy(fe => fe.FeatureFlag.Key)
-            .ToDictionaryAsync(fe => fe.FeatureFlag.Key, fe => fe.IsEnabled, cancellationToken);
+            .Select(fe => new { fe.FeatureFlag.Key, fe.IsEnabled })
+            .ToDictionaryAsync(fe => fe.Key, fe => fe.IsEnabled, cancellationToken);
 
         return new SdkFlagsResponse(flags);
     }
